@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from ml.api.predict import predict_post
 from ml.api.schemas import PredictionRequest, PredictionResponse
 from ..database import get_db
+from sqlalchemy.orm import Session
 from ..models import Post
+
 
 router = APIRouter()
 
@@ -26,7 +28,7 @@ def analyze_post(request: PredictionRequest, db: Session = Depends(get_db)):
             overall_sentiment=result.overall.label,
             sentiment_score=result.overall.score,
             crisis_flag=result.crisis.crisis_flag,
-            prediction=result.dict()
+            prediction=result.model_dump(mode="json")
         )
 
         db.add(db_post)
@@ -37,3 +39,14 @@ def analyze_post(request: PredictionRequest, db: Session = Depends(get_db)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/posts")
+def get_posts(db: Session = Depends(get_db)):
+    posts = (
+        db.query(Post)
+        .order_by(Post.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return posts
