@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Kill ALL Vite default body styles */
+body {
+  display: block !important;
+  place-items: unset !important;
+  min-width: unset !important;
+  min-height: 100vh;
+  background: #030b15 !important;
+  color: #e8f4ff;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  background: #030b15;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, textarea { font-family: inherit; }
+
+::selection { background: rgba(56,189,248,0.25); color: #e8f4ff; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #030b15; }
+::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.3); border-radius: 3px; }
+
+@keyframes spin     { to { transform: rotate(360deg); } }
+@keyframes fadeUp   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes glowPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
