@@ -1,0 +1,15 @@
+/* Global animations referenced by inline styles */
+@keyframes spin      { to { transform: rotate(360deg); } }
+@keyframes fadeUp    { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+@keyframes glowPulse { 0%,100% { opacity:1; box-shadow:0 0 10px currentColor; } 50% { opacity:.3; box-shadow:0 0 3px currentColor; } }
+@keyframes scanBar   { 0%{top:-4px} 100%{top:calc(100% + 4px)} }
+
+/* Hover helpers that can't be done inline */
+.nav-link:hover { color: #38bdf8 !important; background: rgba(56,189,248,0.07) !important; }
+.stat-card:hover { transform: translateY(-3px) !important; border-color: rgba(56,189,248,0.45) !important; box-shadow: 0 0 36px rgba(56,189,248,0.1) !important; }
+.chart-card { transition: box-shadow .2s; }
+.drop-zone:hover { border-color: #38bdf8 !important; background: rgba(56,189,248,0.06) !important; }
+.btn-primary:hover { background: rgba(56,189,248,0.2) !important; border-color: #38bdf8 !important; box-shadow: 0 0 28px rgba(56,189,248,0.25) !important; transform:translateY(-1px) !important; }
+.btn-danger:hover  { background: rgba(255,77,100,0.15) !important; border-color: rgba(255,77,100,.7) !important; }
+.monitor-item:hover { border-color: rgba(56,189,248,0.35) !important; }
+.config-box:hover { border-color: rgba(56,189,248,0.25) !important; }
