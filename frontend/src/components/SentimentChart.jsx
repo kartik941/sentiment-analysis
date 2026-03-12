@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import axios from "axios";
 import { C } from "../theme";
 
 const FALLBACK = [
-  { name: "Positive", value: 52,   fill: "#0ef5a0" },
-  { name: "Neutral",  value: 25.6, fill: "#f5c842" },
+  { name: "Positive", value: 52, fill: "#0ef5a0" },
+  { name: "Neutral", value: 25.6, fill: "#f5c842" },
   { name: "Negative", value: 22.4, fill: "#ff4d70" },
 ];
 
@@ -62,21 +61,18 @@ function CustomLegend({ payload }) {
   );
 }
 
-export default function SentimentChart() {
+export default function SentimentChart({ sentimentData }) {
   const [data, setData] = useState(FALLBACK);
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/metrics/Nike")
-      .then(r => {
-        const s = r.data.sentiment;
-        setData([
-          { name: "Positive", value: s.positive * 100, fill: "#0ef5a0" },
-          { name: "Neutral",  value: s.neutral  * 100, fill: "#f5c842" },
-          { name: "Negative", value: s.negative * 100, fill: "#ff4d70" },
-        ]);
-      })
-      .catch(() => {});
-  }, []);
+    if (sentimentData) {
+      setData([
+        { name: "Positive", value: sentimentData.positive * 100, fill: "#0ef5a0" },
+        { name: "Neutral", value: sentimentData.neutral * 100, fill: "#f5c842" },
+        { name: "Negative", value: sentimentData.negative * 100, fill: "#ff4d70" },
+      ]);
+    }
+  }, [sentimentData]);
 
   return (
     <ResponsiveContainer width="100%" height={360}>

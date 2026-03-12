@@ -1,129 +1,112 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { C, card, badge, mono } from "../theme";
 
-const PAGE = { background:C.void, minHeight:"100vh", padding:"44px 56px", animation:"fadeUp .35s ease both" };
+const API = "http://127.0.0.1:8000";
+const PAGE = { background: C.void, minHeight: "100vh", padding: "44px 56px", animation: "fadeUp .35s ease both" };
 
-const MONITORS = [
-  { name:"Negative Spike",     ok:true  },
-  { name:"Sentiment Drop",     ok:true  },
-  { name:"Volume Surge",       ok:true  },
-  { name:"Competitor Mention", ok:true  },
-];
-
-const THRESHOLDS = [
-  { label:"Negative Sentiment", current:22, max:37, color:C.neg  },
-  { label:"Sentiment Velocity", current:8,  max:25, color:C.neu  },
-  { label:"Volume Anomaly",     current:11, max:40, color:C.violet},
-  { label:"Competitor Overlap", current:5,  max:30, color:C.cyan  },
-];
-
-const CONFIG = [
-  { label:"Alert Threshold",  value:"> 15% Negative Spike" },
-  { label:"Window",           value:"Rolling 24h"          },
-  { label:"Response SLA",     value:"< 5 minutes"          },
-  { label:"Brands Tracked",   value:"Nike, Adidas, Puma"   },
-];
+const SEV = {
+  HIGH: { color: C.neg, bg: "rgba(255,77,112,0.08)", border: C.neg },
+  MEDIUM: { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "#f59e0b" },
+  LOW: { color: C.neu, bg: "rgba(245,200,66,0.08)", border: C.neu },
+};
 
 export default function Alerts() {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  function fetchAlerts() {
+    axios.get(`${API}/alerts`)
+      .then(r => setAlerts(r.data.alerts || []))
+      .catch(() => { })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    fetchAlerts();
+    const id = setInterval(fetchAlerts, 60_000); // poll every 60s
+    return () => clearInterval(id);
+  }, []);
+
+  function resolve(alertId) {
+    axios.patch(`${API}/alerts/${alertId}/resolve`)
+      .then(() => {
+        setAlerts(prev => prev.filter(a => a.id !== alertId));
+      })
+      .catch(() => { });
+  }
+
   return (
     <div style={PAGE}>
-
-      {/* ── Header ── */}
-      <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:"38px", paddingBottom:"28px", borderBottom:`1px solid ${C.bDim}` }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 38, paddingBottom: 28, borderBottom: `1px solid ${C.bDim}` }}>
         <div>
-          <h1 style={{ fontFamily:C.mono, fontSize:"28px", fontWeight:"700", color:C.t1, letterSpacing:"-.02em", display:"flex", alignItems:"center", gap:"14px" }}>
-            <span style={{ display:"block", width:"5px", height:"32px", background:`linear-gradient(180deg,${C.neg},#e11d48)`, borderRadius:"3px", boxShadow:`0 0 18px ${C.neg}99`, flexShrink:0 }} />
+          <h1 style={{ fontFamily: C.mono, fontSize: 28, fontWeight: 700, color: C.t1, display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ display: "block", width: 5, height: 32, background: `linear-gradient(180deg,${C.neg},#e11d48)`, borderRadius: 3, boxShadow: `0 0 18px ${C.neg}99` }} />
             Crisis Alerts
           </h1>
-          <p style={{ fontFamily:C.mono, fontSize:"11px", letterSpacing:".12em", textTransform:"uppercase", color:C.t3, marginTop:"10px", marginLeft:"19px" }}>
-            Anomaly detection · threshold monitoring
+          <p style={mono(11, C.t3, { letterSpacing: ".12em", textTransform: "uppercase", marginTop: 10, marginLeft: 19 })}>
+            Real-time monitoring · polling every 60s
           </p>
         </div>
-        <div style={{ display:"flex", gap:"10px" }}>
-          <span style={badge(C.pos)}>● ALL CLEAR</span>
-          <span style={badge(C.t3)}>0 ACTIVE</span>
+        <div style={{ display: "flex", gap: 10 }}>
+          <span style={badge(alerts.length === 0 ? C.pos : C.neg)}>
+            {alerts.length === 0 ? "● ALL CLEAR" : `● ${alerts.length} ACTIVE`}
+          </span>
         </div>
       </div>
 
-      {/* ── Monitor status row ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"16px", marginBottom:"24px" }}>
-        {MONITORS.map(({ name, ok }) => (
-          <div key={name} className="monitor-item" style={{
-            background:C.card, border:`1px solid ${C.bDim}`,
-            borderRadius:"12px", padding:"20px 22px",
-            display:"flex", alignItems:"center", gap:"12px",
-            transition:"border-color .2s",
-          }}>
-            <div style={{ width:"8px", height:"8px", borderRadius:"50%", background:C.pos, boxShadow:`0 0 10px ${C.pos}`, flexShrink:0, animation:"glowPulse 2.5s ease-in-out infinite" }} />
-            <span style={{ fontFamily:C.sans, fontSize:"13px", fontWeight:"500", color:C.t2, flex:1 }}>{name}</span>
-            <span style={{ fontFamily:C.mono, fontSize:"10px", color:C.pos, letterSpacing:".07em" }}>OK</span>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Active alerts (empty) ── */}
-      <div style={{ ...card(), marginBottom:"24px" }}>
-        <div style={{ position:"absolute", top:0, left:0, right:0, height:"1px", background:`linear-gradient(90deg,transparent,${C.neg}44,transparent)` }} />
-
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"6px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-            <div style={{ width:"8px", height:"8px", borderRadius:"50%", background:C.pos, boxShadow:`0 0 12px ${C.pos}`, animation:"glowPulse 2.2s ease-in-out infinite" }} />
-            <span style={mono(11, C.t2, { letterSpacing:".1em", textTransform:"uppercase", fontWeight:"700" })}>Active Alerts</span>
-          </div>
-          <span style={badge(C.pos)}>MONITORING</span>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "80px 0", color: C.cyan, fontFamily: C.mono, fontSize: 14 }}>
+          Scanning for alerts...
         </div>
-
-        {/* Empty */}
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"48px 20px 38px", gap:"12px" }}>
-          <div style={{ fontSize:"52px", opacity:.15, lineHeight:1 }}>◎</div>
-          <div style={mono(12, C.t3, { letterSpacing:".12em", textTransform:"uppercase" })}>No alerts detected</div>
-          <p style={{ fontFamily:C.sans, fontSize:"14px", color:C.t3, textAlign:"center", maxWidth:"380px", lineHeight:1.75 }}>
-            All brand sentiment metrics are within normal thresholds.<br/>Alerts will appear here immediately when anomalies are detected.
+      ) : alerts.length === 0 ? (
+        /* No alerts */
+        <div style={card({ textAlign: "center", padding: "60px 30px" })}>
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg,transparent,${C.pos}44,transparent)` }} />
+          <div style={{ fontSize: 52, opacity: .15, lineHeight: 1 }}>◎</div>
+          <div style={mono(12, C.t3, { marginTop: 16, letterSpacing: ".12em", textTransform: "uppercase" })}>
+            No alerts detected
+          </div>
+          <p style={{ fontFamily: C.sans, fontSize: 14, color: C.t3, marginTop: 12, lineHeight: 1.75 }}>
+            All brand sentiment metrics are within normal thresholds.<br />
+            Alerts will appear here immediately when anomalies are detected.
           </p>
         </div>
-
-        {/* Threshold bars */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"18px", marginTop:"16px" }}>
-          {THRESHOLDS.map(({ label, current, max, color }) => {
-            const pct = (current / max) * 100;
+      ) : (
+        /* Alert cards */
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {alerts.map(a => {
+            const s = SEV[a.severity] || SEV.LOW;
             return (
-              <div key={label} style={{ background:C.raised, border:`1px solid ${C.bDim}`, borderRadius:"12px", padding:"22px 24px" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"14px" }}>
-                  <span style={mono(10, C.t3, { letterSpacing:".1em", textTransform:"uppercase" })}>{label}</span>
-                  <span style={{ fontFamily:C.mono, fontSize:"11px", color, fontWeight:"700" }}>{current}% / {max}%</span>
+              <div key={a.id} style={{
+                ...card({ padding: "20px 24px" }),
+                borderLeft: `4px solid ${s.border}`,
+                background: s.bg,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <span style={{ ...badge(s.color), fontSize: 10 }}>{a.severity}</span>
+                    <span style={{ fontFamily: C.sans, fontSize: 15, fontWeight: 600, color: C.t1 }}>{a.brand}</span>
+                  </div>
+                  <button onClick={() => resolve(a.id)} style={{
+                    padding: "7px 16px", borderRadius: 8, border: `1px solid ${C.bDim}`,
+                    background: "rgba(14,245,160,0.06)", color: C.pos,
+                    fontFamily: C.mono, fontSize: 10, fontWeight: 700, cursor: "pointer",
+                    letterSpacing: ".08em", textTransform: "uppercase",
+                  }}>✓ Mark Resolved</button>
                 </div>
-                {/* Track */}
-                <div style={{ position:"relative", height:"7px", background:C.void, borderRadius:"4px", overflow:"visible" }}>
-                  <div style={{ height:"100%", width:`${pct}%`, background:`linear-gradient(90deg,${color}88,${color})`, borderRadius:"4px", boxShadow:`0 0 12px ${color}55`, transition:"width .8s ease" }} />
-                  {/* Threshold marker */}
-                  <div style={{ position:"absolute", top:"-5px", right:"0", width:"2px", height:"17px", background:`${color}cc`, borderRadius:"1px", boxShadow:`0 0 8px ${color}` }} />
-                </div>
-                <div style={mono(9, C.t3, { marginTop:"9px", letterSpacing:".08em" })}>
-                  THRESHOLD AT {max}% &nbsp;·&nbsp; CURRENT: {current}%
-                </div>
+                <p style={{ fontFamily: C.sans, fontSize: 13, color: C.t2, marginTop: 10, lineHeight: 1.6 }}>
+                  {a.reason}
+                </p>
+                <span style={mono(10, C.t4, { marginTop: 8, display: "block" })}>
+                  Triggered: {new Date(a.triggered_at).toLocaleString()}
+                </span>
               </div>
             );
           })}
         </div>
-      </div>
-
-      {/* ── Config grid ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"16px" }}>
-        {CONFIG.map(({ label, value }, i) => {
-          const colors = [C.cyan, C.violet, C.neu, C.pos];
-          return (
-            <div key={label} className="config-box" style={{
-              background:C.card, border:`1px solid ${C.bDim}`,
-              borderTop:`2px solid ${colors[i]}`,
-              borderRadius:"12px", padding:"22px 24px",
-              transition:"border-color .2s",
-            }}>
-              <div style={mono(9, C.t3, { letterSpacing:".12em", textTransform:"uppercase", marginBottom:"9px" })}>{label}</div>
-              <div style={{ fontFamily:C.sans, fontSize:"14px", fontWeight:"600", color:C.t2 }}>{value}</div>
-            </div>
-          );
-        })}
-      </div>
-
+      )}
     </div>
   );
 }

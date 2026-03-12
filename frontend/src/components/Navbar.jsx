@@ -1,15 +1,30 @@
 import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { C } from "../theme";
 
+const API = "http://127.0.0.1:8000";
+
 const LINKS = [
-  { to: "/",           label: "Dashboard",    n: "01" },
-  { to: "/analyze",    label: "Text Analysis",n: "02" },
-  { to: "/csv-upload", label: "CSV Upload",   n: "03" },
-  { to: "/alerts",     label: "Alerts",       n: "04" },
+  { to: "/", label: "Dashboard", n: "01" },
+  { to: "/analyze", label: "Text Analysis", n: "02" },
+  { to: "/csv-upload", label: "CSV Upload", n: "03" },
+  { to: "/competitive", label: "Compare", n: "04" },
+  { to: "/alerts", label: "Alerts", n: "05" },
+  { to: "/live-news", label: "Live News", n: "06" },
 ];
 
 export default function Navbar() {
   const { pathname } = useLocation();
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    const poll = () => axios.get(`${API}/alerts`).then(r => setAlertCount(r.data.alerts?.length || 0)).catch(() => { });
+    poll();
+    const id = setInterval(poll, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <nav style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -49,6 +64,7 @@ export default function Navbar() {
       <div style={{ display: "flex", gap: "6px" }}>
         {LINKS.map(({ to, label, n }) => {
           const active = pathname === to;
+          const isAlerts = to === "/alerts";
           return (
             <Link key={to} to={to} className="nav-link" style={{
               position: "relative",
@@ -61,6 +77,13 @@ export default function Navbar() {
             }}>
               <span style={{ fontFamily: C.mono, fontSize: "9px", color: C.t4, letterSpacing: ".04em" }}>{n}</span>
               {label}
+              {isAlerts && alertCount > 0 && (
+                <span style={{
+                  width: 16, height: 16, borderRadius: "50%", background: C.neg,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: C.mono, fontSize: 8, fontWeight: 700, color: "#fff",
+                }}>{alertCount}</span>
+              )}
               {active && (
                 <div style={{
                   position: "absolute", bottom: "-1px", left: "14px", right: "14px",
