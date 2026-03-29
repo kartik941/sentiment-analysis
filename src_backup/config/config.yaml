@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Brand Sentiment Monitor — Live Collection Configuration
+# Used by: src/data/collector.py
+# ─────────────────────────────────────────────────────────────────────────────
+
+online:
+
+  # ── Brand Definitions ───────────────────────────────────────────────────────
+  brands:
+    primary: Nike
+    competitors:
+      - Adidas
+      - Puma
+      - Reebok
+
+    # Keywords used when searching Reddit r/all and NewsAPI
+    keywords:
+      Nike:
+        - Nike
+        - Nike shoes
+        - Nike Air
+        - Nike running
+        - Just Do It
+      Adidas:
+        - Adidas
+        - Adidas shoes
+        - Adidas Ultraboost
+        - adidas originals
+      Puma:
+        - Puma shoes
+        - Puma sportswear
+      Reebok:
+        - Reebok shoes
+        - Reebok classic
+
+  # ── File Paths (relative to project root) ──────────────────────────────────
+  paths:
+    live_reddit:   data/live/reddit
+    live_news:     data/live/news
+    live_combined: data/live/combined
+
+  # ── Reddit (PRAW) Settings ──────────────────────────────────────────────────
+  reddit:
+    enabled: false   # disabled — not using Reddit API
+    schedule_interval_minutes: 30          # pull every 30 min
+
+    # Subreddits to monitor per brand (in addition to r/all search)
+    subreddits:
+      Nike:
+        - Nike
+        - Sneakers
+        - running
+        - LifeProTips
+      Adidas:
+        - Adidas
+        - Sneakers
+        - streetwear
+      Puma:
+        - Puma
+        - Sneakers
+      Reebok:
+        - Reebok
+        - Sneakers
+
+    post_limit_per_subreddit: 25           # posts fetched per subreddit per run
+    comment_limit_per_post:   10           # top comments fetched per post
+    top_posts_for_comments:   5            # how many posts we fetch comments for
+    search_time_filter:       week         # reddit time filter: hour/day/week/month
+    min_text_length:          20           # discard posts shorter than this (chars)
+    filter_nsfw:              true         # skip over-18 posts
+
+  # ── NewsAPI Settings ────────────────────────────────────────────────────────
+  newsapi:
+    enabled: true
+    schedule_interval_minutes: 60          # pull every 60 min
+
+    language:           en
+    sort_by:            publishedAt
+    page_size:          100                # max articles per request (NewsAPI max)
+    lookback_days:      7                  # how far back to search
+    keywords_per_brand: 3                  # API calls per brand per run (stay under 100/day)
+    max_full_text_chars: 2000              # truncate combined text to this length
+    text_fields:
+      - title
+      - description
+      - content
+
+  # ── RSS Fallback Settings ───────────────────────────────────────────────────
+  rss:
+    enabled: false   # disabled — using NewsAPI only
+    feeds:
+      Nike:
+        - https://news.google.com/rss/search?q=Nike+shoes&hl=en-US&gl=US&ceid=US:en
+        - https://feeds.feedburner.com/ign/sneakers
+      Adidas:
+        - https://news.google.com/rss/search?q=Adidas+shoes&hl=en-US&gl=US&ceid=US:en
+      Puma:
+        - https://news.google.com/rss/search?q=Puma+sportswear&hl=en-US&gl=US&ceid=US:en
+      Reebok:
+        - https://news.google.com/rss/search?q=Reebok+shoes&hl=en-US&gl=US&ceid=US:en

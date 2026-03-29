@@ -17,7 +17,7 @@ import axios from "axios";
 
 export const API_BASE = "http://127.0.0.1:8000";
 
-const http = axios.create({ baseURL: API_BASE, timeout: 120_000 });
+const http = axios.create({ baseURL: API_BASE, timeout: 30_000 });
 
 // ─── In-memory cache ──────────────────────────────────────────────────────────
 const _cache   = {};   // { [key]: { data, ts } }
@@ -136,10 +136,15 @@ export async function checkHealth() {
 }
 
 /**
- * Lightweight cache warm — only fetches fast endpoints.
- * Metrics and live-news are fetched on-demand when the user visits a page.
+ * Warm the cache for all brands in the background.
+ * Call this once on app start so data is ready before user clicks anything.
  */
 export function warmCache() {
-  getBrands().catch(() => {});
+  // Fire all prefetches silently — errors are swallowed, this is best-effort
+  getAllMetrics(24).catch(() => {});
+  getCompetitive().catch(() => {});
   getAlerts().catch(() => {});
+  ["Nike", "Adidas", "Puma", "Reebok"].forEach(b =>
+    getLiveNews(b, 20, 0).catch(() => {})
+  );
 }

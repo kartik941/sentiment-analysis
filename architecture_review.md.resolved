@@ -1,0 +1,57 @@
+# 🏗️ Production Architecture Review: AI Brand Monitor
+
+As requested, here is a senior-level ML systems engineering review of your AI-powered brand monitoring system. 
+
+Based on my scan of your codebase (specifically [src/data/collector.py](file:///d:/Internships/Sure%20trust/sentiment-analysis/src/data/collector.py) and [backend/main.py](file:///d:/Internships/Sure%20trust/sentiment-analysis/backend/main.py)), your core MS models work, but the **data pipeline and serving architecture resemble a local script rather than a distributed, real-time platform**. 
+
+Currently, your API opens a local CSV file and runs ML synchronously on the fly whenever a user hits the dashboard. This causes latency, statelessness, and blocking API calls.
+
+Here is the blueprint for transforming this into a scalable, production-grade system.
+
+---
+
+## 1. Clean Service-Based Architecture (Decoupling)
+Your backend tightly couples ingestion, inference, and the API. We need to split this into decoupled microservices (or at least independent background workers):
+
+1. **Ingestion Service (The Collectors)**: A background worker that strictly fetches data from NewsAPI/Reddit at set intervals and drops it into a queue.
+2. **Inference Worker (The ML Engine)**: A separate worker that consumes the raw text queue, runs your Transformer pipelines, and saves the enriched predictions.
+3. **API Service (The Serving Layer)**: A lightweight FastAPI app that *never* runs ML models. It only reads pre-calculated aggregates from the database to serve to the React frontend instantly.
+
+## 2. Proper Data Ingestion, Filtering, and Storage
+### The Problem:
+`Collector.py` dumps data into CSVs, making state management impossible for the frontend. NewsAPI returns noisy data because simple keyword matching isn't enough.
+
+### The Fix:
+* **The Message Broker**: Introduce **Redis Streams**, **RabbitMQ**, or **Kafka**. The Ingestion Service pushes raw articles to a queue. 
+* **The Relevancy Filter Layer**: Before hitting the heavy RoBERTa pipeline, pass the article through a lightweight heuristic filter (e.g., TF-IDF or simple keyword density thresholding) to ensure the article is *actually* about the brand, not just a passing mention.
+* **The Database (Persistence Layer)**: Ditch the CSV files. Use **PostgreSQL (Supabase)**. 
+  * Table 1: `raw_documents` (NewsAPI/Reddit data)
+  * Table 2: `predictions` (Sentiment, Emotion, Topic outputs tied to document IDs)
+
+## 3. Real-Time Feel & Frontend Interaction
+### The Problem:
+The frontend requests data once, and it's static. Refreshing or switching tabs drops state.
+
+### The Fix:
+* **WebSockets or Server-Sent Events (SSE)**: Instead of the React app polling `GET /live-news` manually, the API Service should push new articles to the frontend via WebSockets the moment the Inference Worker finishes analyzing them.
+* **Frontend State Management**: Use React Query (`@tanstack/react-query`) or Redux Toolkit. This caches the data in the browser so switching from "Nike" to "Puma" and back doesn't trigger a new API call or cause the screen to flash empty.
+
+## 4. API Design, Aggregation, and Caching
+### The Problem:
+`GET /metrics/{brand}` currently reads a CSV, runs ML on 50 rows, and calculates counts on-the-fly. This will crash under load.
+
+### The Fix:
+* **Pre-Aggregated Materialized Views**: In PostgreSQL, create a Materialized View for your dashboard metrics (e.g., `daily_brand_sentiment_aggregates`). The API simply queries this table `SELECT * FROM aggregates WHERE brand = 'Nike'`, returning data in 5ms.
+* **Redis Caching**: Cache the dashboard API responses in Redis with a TTL (Time to Live) of 60 seconds. If 1,000 users load the dashboard, only 1 hits the DB; the other 999 get the Redis cache.
+* **Batching ML Inference**: Your models should not predict line-by-line during an API request. The Inference Worker should pull a batch of 32 or 64 articles from the queue, run `.predict(batch)`, and save them together to maximize GPU/CPU utilization.
+
+## 5. Summary: The Production Data Flow
+1. **Cron/Scheduler** → Triggers `Ingestion Service`.
+2. **Ingestion Service** → Fetches NewsAPI → Filters noise → Pushes to `RabbitMQ/Redis Queue`.
+3. **ML Inference Worker** → Polls Queue → Batches 32 texts → Runs Sentiment/Emotion/Topic → Saves to `PostgreSQL`.
+4. **PostgreSQL** → Automatically updates `Materialized Views` for dashboard metrics.
+5. **API Service (FastAPI)** → Reads from `Materialized Views` → Caches in `Redis`.
+6. **Frontend (React)** → Connects via WebSocket for live feed updates & queries REST API (backed by Redis) for instant Dashboard metrics.
+
+---
+*Whenever you are ready, let me know, and we can start implementing these architectural changes step-by-step!*
